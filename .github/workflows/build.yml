@@ -2,16 +2,15 @@ name: Python CI
 
 on: [push, pull_request]
 
-env:
-  PIP_CACHE_DIR: ~/cache/pip
-
 jobs:
   tox:
+    env:
+      PIP_CACHE_DIR: /tmp/libcst_cache/pip
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: [3.6, 3.7, 3.8]
         environment: [test]
         include:
@@ -37,7 +36,7 @@ jobs:
       uses: actions/cache@v2
       id:   cache
       with:
-        path: '~/cache'
+        path: /tmp/libcst_cache
         key: pip-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.environment }}-${{ hashFiles('tox.ini', 'requirements.txt', 'requirements-dev.txt', 'setup.py') }}
         restore-keys: |
           pip-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.environment }}-
@@ -48,7 +47,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install tox tox-gh-actions -r requirements.txt -r requirements-dev.txt
     - name: run tox
-      run: tox --workdir ~/cache/tox -e ${{ matrix.environment }}
+      run: tox --workdir /tmp/libcst_cache/tox -e ${{ matrix.environment }}
     - name: Archive Docs
       if: matrix.environment == 'docs'
       uses: actions/upload-artifact@v2
