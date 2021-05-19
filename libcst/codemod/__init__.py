@@ -18,10 +18,12 @@ from libcst.codemod._command import (
 )
 from libcst.codemod._context import CodemodContext
 from libcst.codemod._runner import (
+    RemoveFile,
     SkipFile,
     SkipReason,
     TransformExit,
     TransformFailure,
+    TransformRemove,
     TransformResult,
     TransformSkip,
     TransformSuccess,
@@ -53,4 +55,6 @@ __all__ = [
     "exec_transform_with_prettyprint",
     "parallel_exec_transform_with_prettyprint",
     "diff_code",
+    "RemoveFile",
+    "TransformRemove",
 ]

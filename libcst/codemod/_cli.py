@@ -23,10 +23,12 @@ from libcst import PartialParserConfig, parse_module
 from libcst.codemod._codemod import Codemod
 from libcst.codemod._dummy_pool import DummyPool
 from libcst.codemod._runner import (
+    RemoveFile,
     SkipFile,
     SkipReason,
     TransformExit,
     TransformFailure,
+    TransformRemove,
     TransformResult,
     TransformSkip,
     TransformSuccess,
@@ -309,6 +311,16 @@ def _execute_transform(  # noqa: C901
                     warning_messages=transformer.context.warnings,
                 ),
             )
+        except RemoveFile as ex:
+            os.remove(filename)
+            return ExecutionResult(
+                filename=filename,
+                changed=False,
+                transform_result=TransformRemove(
+                    skip_description=str(ex),
+                    warning_messages=transformer.context.warnings,
+                ),
+            )
         except Exception as ex:
             return ExecutionResult(
                 filename=filename,
@@ -500,8 +512,9 @@ class ParallelTransformResult:
     :func:`~libcst.codemod.parallel_exec_transform_with_prettyprint` against
     a series of files. This is a simple summary, with counts for number of
     successfully codemodded files, number of files that we failed to codemod,
-    number of warnings generated when running the codemod across the files, and
-    the number of files that we skipped when running the codemod.
+    number of warnings generated when running the codemod across the files,
+    the number of files that we skipped, and the number of files we removed
+    when running the codemod.
     """
 
     #: Number of files that we successfully transformed.
@@ -513,6 +526,8 @@ class ParallelTransformResult:
     #: Number of files skipped because they were blacklisted, generated
     #: or the codemod requested to skip.
     skips: int
+    #: Number of files the codemod requested to remove
+    removes: int
 
 
 # Unfortunate wrapper required since there is no `istarmap_unordered`...
@@ -588,7 +603,9 @@ def parallel_exec_transform_with_prettyprint(  # noqa: C901
         raise Exception("Must have at least one job to process!")
 
     if total == 0:
-        return ParallelTransformResult(successes=0, failures=0, skips=0, warnings=0)
+        return ParallelTransformResult(
+            successes=0, failures=0, skips=0, warnings=0, removes=0
+        )
 
     if repo_root is not None:
         # Make sure if there is a root that we have the absolute path to it.
@@ -640,6 +657,7 @@ def parallel_exec_transform_with_prettyprint(  # noqa: C901
     failures: int = 0
     warnings: int = 0
     skips: int = 0
+    removes: int = 0
 
     with pool_impl(processes=jobs) as p:  # type: ignore
         args = [
@@ -663,12 +681,14 @@ def parallel_exec_transform_with_prettyprint(  # noqa: C901
                     hide_generated=hide_generated,
                     hide_blacklisted=hide_blacklisted,
                 )
-                progress.print(successes + failures + skips)
+                progress.print(successes + failures + skips + removes)
 
                 if isinstance(result.transform_result, TransformFailure):
                     failures += 1
                 elif isinstance(result.transform_result, TransformSuccess):
                     successes += 1
+                elif isinstance(result.transform_result, TransformRemove):
+                    removes += 1
                 elif isinstance(
                     result.transform_result, (TransformExit, TransformSkip)
                 ):
@@ -680,5 +700,9 @@ def parallel_exec_transform_with_prettyprint(  # noqa: C901
 
     # Return whether there was one or more failure.
     return ParallelTransformResult(
-        successes=successes, failures=failures, skips=skips, warnings=warnings
+        successes=successes,
+        failures=failures,
+        skips=skips,
+        warnings=warnings,
+        removes=removes,
     )

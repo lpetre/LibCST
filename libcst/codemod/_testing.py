@@ -9,7 +9,7 @@ from typing import Optional, Sequence, Type
 from libcst import PartialParserConfig, parse_module
 from libcst.codemod._codemod import Codemod
 from libcst.codemod._context import CodemodContext
-from libcst.codemod._runner import SkipFile
+from libcst.codemod._runner import SkipFile, RemoveFile
 from libcst.testing.utils import UnitTest
 
 
@@ -79,6 +79,7 @@ class _CodemodTest:
         python_version: Optional[str] = None,
         expected_warnings: Optional[Sequence[str]] = None,
         expected_skip: bool = False,
+        expected_remove: bool = False,
         **kwargs: object,
     ) -> None:
         """
@@ -113,10 +114,17 @@ class _CodemodTest:
             if not expected_skip:
                 raise
             output_tree = input_tree
+        except RemoveFile:
+            if not expected_remove:
+                raise
+            output_tree = input_tree
         else:
             if expected_skip:
                 # pyre-ignore This mixin needs to be used with a UnitTest subclass.
                 self.fail("Expected SkipFile but was not raised")
+            if expected_remove:
+                # pyre-ignore This mixin needs to be used with a UnitTest subclass.
+                self.fail("Expected RemoveFile but was not raised")
         # pyre-ignore This mixin needs to be used with a UnitTest subclass.
         self.assertEqual(
             CodemodTest.make_fixture_data(after),

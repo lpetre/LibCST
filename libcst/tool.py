@@ -585,11 +585,12 @@ def _codemod_impl(proc_name: str, command_args: List[str]) -> int:  # noqa: C901
 
     # Print a fancy summary at the end.
     print(
-        f"Finished codemodding {result.successes + result.skips + result.failures} files!",
+        f"Finished codemodding {result.successes + result.skips + result.failures + result.removes} files!",
         file=sys.stderr,
     )
     print(f" - Transformed {result.successes} files successfully.", file=sys.stderr)
     print(f" - Skipped {result.skips} files.", file=sys.stderr)
+    print(f" - Removed {result.removes} files.", file=sys.stderr)
     print(f" - Failed to codemod {result.failures} files.", file=sys.stderr)
     print(f" - {result.warnings} warnings were generated.", file=sys.stderr)
     return 1 if result.failures > 0 else 0

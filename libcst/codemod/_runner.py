@@ -109,8 +109,30 @@ class SkipFile(Exception):
     """
 
 
+@dataclass(frozen=True)
+class TransformRemove:
+    """
+    A :class:`~libcst.codemod.TransformResult` used when the codemod requested to
+    be removed. This is because the transform raised :class:`~libcst.codemod.RemoveFile`.
+    """
+
+    #: The description populated from the :class:`~libcst.codemod.RemoveFile` exception.
+    description: str
+
+    #: All warning messages that were generated before the codemod decided to remove the file.
+    warning_messages: Sequence[str] = ()
+
+
+class RemoveFile(Exception):
+    """
+    Raise this exception to delete the current file.
+
+    The exception message should be the reason for removing.
+    """
+
+
 TransformResult = Union[
-    TransformSuccess, TransformFailure, TransformExit, TransformSkip
+    TransformSuccess, TransformFailure, TransformExit, TransformSkip, TransformRemove
 ]
 
 
@@ -127,10 +149,13 @@ def transform_module(
     If the codemod elected to skip by throwing a :class:`~libcst.codemod.SkipFile`
     exception, this will return a :class:`~libcst.codemod.TransformSkip` containing
     the reason for skipping as well as any warnings that were generated before
-    the codemod decided to skip. If the codemod throws an unexpected exception,
-    this will return a :class:`~libcst.codemod.TransformFailure` containing the
-    exception that occured as well as any warnings that were generated before the
-    codemod crashed.
+    the codemod decided to skip. If the codemod elected to remove a file by throwing
+    a :class:`~libcst.codemod.RemoveFile` exception, this will return a
+    :class:`~libcst.codemod.TransformRemove` containing the reason for removing
+    as well as any warnings that were generated before the codemod decided to skip.
+    If the codemod throws an unexpected exception, this will return a
+    :class:`~libcst.codemod.TransformFailure` containing the exception that occured
+    as well as any warnings that were generated before the codemod crashed.
     """
     try:
         input_tree = parse_module(
@@ -151,6 +176,11 @@ def transform_module(
         return TransformSkip(
             skip_description=str(ex),
             skip_reason=SkipReason.OTHER,
+            warning_messages=transformer.context.warnings,
+        )
+    except RemoveFile as ex:
+        return TransformRemove(
+            description=str(ex),
             warning_messages=transformer.context.warnings,
         )
     except Exception as ex:
